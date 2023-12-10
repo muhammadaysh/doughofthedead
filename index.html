@@ -1,150 +1,16 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8" />
     <title>Dough of the Dead</title>
-    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
-    <style type="text/css">
-        body {
-            margin: 0;
-        }
-    </style>
+    <link rel="icon" href="assets/dotdicon.jpg" type="image/jpg">
+    <link rel="shortcut icon" href="assets/dotdicon.jpg" type="image/jpg">
+    <script src="../phaser/dist/phaser.min.js"></script>
+    <script type="module" src="main.js"></script>
 </head>
 
 <body>
-
-    <script type="text/javascript">
-
-        var config = {
-            type: Phaser.AUTO,
-            width: window.innerWidth,
-            height: window.innerHeight,
-            pixelArt: true,
-            physics: {
-                default: "arcade",
-                arcade: {
-                    gravity: {
-                        y: 800 // Adjust gravity as needed
-                    }
-                }
-            },
-            scene: {
-                preload: preload,
-                create: create,
-                update: update,
-            },
-
-        };
-
-        var game = new Phaser.Game(config);
-
-
-        const foregroundSpeed = 1.5;
-        const midgroundSpeed = 0.8;
-        const backgroundSpeed = 0.2;
-        const groundSpeed = 1.6; // Adjust as needed
-
-        // Additional variable for double jump
-        let canDoubleJump = true;
-
-        function preload() {
-            this.load.image('sky', 'assets/sky.png');
-            this.load.image('foreground', 'assets/foreground.png');
-            this.load.image('midground', 'assets/midground.png');
-            this.load.image('background', 'assets/background.png');
-            this.load.image('ground', 'assets/ground.png');
-            this.load.spritesheet('jesse', 'assets/jesse.png', {
-                frameWidth: 1200 / 6, // Adjust the width based on the number of sprites and desired height
-                frameHeight: 200,
-            });
-        }
-
-        function create() {
-            // Set the sky background
-            sky = this.add.image(0, 0, 'sky').setOrigin(0, 0);
-
-            var scaleX = game.config.width / sky.width;
-            var scaleY = game.config.height / sky.height;
-
-            sky.setScale(scaleX, scaleY);
-
-            // Set the background layers with tileSprites for infinite scrolling
-            background = this.add.tileSprite(0, 0, window.innerWidth, window.innerHeight, 'background').setOrigin(0, 0).setScale(scaleX, scaleY);
-            midground = this.add.tileSprite(0, 0, window.innerWidth, window.innerHeight, 'midground').setOrigin(0, 0).setScale(scaleX, scaleY);
-            foreground = this.add.tileSprite(0, 0, window.innerWidth, window.innerHeight, 'foreground').setOrigin(0, 0).setScale(scaleX, scaleY);
-
-            // Set up the visible ground
-            ground = this.add.tileSprite(0, window.innerHeight - 70, window.innerWidth, 70, 'ground').setOrigin(0, 0).setScale(scaleX, 1);
-
-            // Set up the invisible ground
-            invisibleGround = this.physics.add.sprite(0, window.innerHeight - 35, 'ground').setOrigin(0, 0).setScale(scaleX / 2, 0.5);
-            invisibleGround.setAlpha(0); 
-            this.physics.world.enable(invisibleGround);
-
-            // Sync the initial positions
-            invisibleGround.x = ground.x;
-
-            // Load the first sprite on the left with physics
-            jesseSprite = this.physics.add.sprite(50, window.innerHeight - 120, 'jesse');
-
-            // Enable collision with the world bounds
-            jesseSprite.setCollideWorldBounds(true);
-
-            // Add bounce effect (optional)
-            jesseSprite.setBounce(0.2);
-
-            // Enable collision between the jesseSprite and invisibleGround
-            this.physics.add.collider(jesseSprite, invisibleGround);
-
-            // Create animations for alternating between the third and last sprites
-            this.anims.create({
-                key: 'alternate',
-                frames: [
-                    { key: 'jesse', frame: 2 }, // Third sprite
-                    { key: 'jesse', frame: 5 }, // Last sprite
-                ],
-                frameRate: 6,
-                repeat: -1, // Repeat indefinitely
-            });
-
-            // Play the 'alternate' animation
-            jesseSprite.play('alternate');
-
-            // Set up the input keys
-            cursors = this.input.keyboard.createCursorKeys();
-
-            // Set up the jump key
-            jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-        }
-
-        function update() {
-            // The tilePositionX property can be directly set on tile sprites
-            foreground.tilePositionX += foregroundSpeed;
-            midground.tilePositionX += midgroundSpeed;
-            background.tilePositionX += backgroundSpeed;
-            ground.tilePositionX += groundSpeed;
-
-            // Sync the positions and velocities of the visible and invisible grounds
-            invisibleGround.x = ground.x;
-            invisibleGround.setVelocityX(-groundSpeed * 100); // Adjust the multiplier as needed
-
-            // Check for jumping
-            if (jumpKey.isDown && jesseSprite.body.onFloor() ) {
-                jesseSprite.setVelocityY(-650); // Adjust the jump velocity as needed
-
-                // Apply slight rotation when jumping
-                jesseSprite.setAngle(-10); // Adjust the angle as needed
-            } else {
-                // Reset rotation when not jumping
-                jesseSprite.setAngle(0);
-            }
-        }
-
-
-    </script>
-
 </body>
 
 </html>
