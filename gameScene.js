@@ -6,26 +6,27 @@ let foreground;
 let ground;
 let invisibleGround;
 let buildingsGroup;
+let survivorsGroup;
 let jesseSprite;
 let cursors;
 let jumpKey;
+let score = 0;
+let scoreText;
 
 let jumpCount = 0;
-const maxJumps = 2;
 let jumpKeyJustPressed = false;
 
-let wobbleFrequency = 0.01; // Adjust the wobble frequency as needed
-let wobbleAmplitude = 7; // Adjust the wobble amplitude as needed
+let wobbleFrequency = 0.01;
+let wobbleAmplitude = 7;
 
 // Constants
-const foregroundSpeed = 1.5;
-const midgroundSpeed = 0.8;
-const backgroundSpeed = 0.2;
-const groundSpeed = 1.6;
+const foregroundSpeed = 1.8;
+const midgroundSpeed = 1.2;
+const backgroundSpeed = 0.6;
+const groundSpeed = 2.0;
 
 export default class GameScene extends Phaser.Scene {
   preload() {
-    // Load game assets
     this.load.image("sky", "assets/sky.png");
     this.load.image("foreground", "assets/foreground.png");
     this.load.image("midground", "assets/midground.png");
@@ -35,6 +36,11 @@ export default class GameScene extends Phaser.Scene {
       frameWidth: 1200 / 6,
       frameHeight: 200,
     });
+    this.load.spritesheet("survivor", "assets/survivor.png", {
+      frameWidth: 1200 / 3,
+      frameHeight: 274,
+    });
+
     this.load.image("building_1", "assets/building_1.png");
     this.load.image("building_2", "assets/building_2.png");
     this.load.image("building_3", "assets/building_3.png");
@@ -93,28 +99,27 @@ export default class GameScene extends Phaser.Scene {
     // Sync the initial positions
     invisibleGround.x = ground.x;
 
-    // Create a group for buildings
+    // Create group for buildings
     buildingsGroup = this.physics.add.group();
     this.physics.world.enable(buildingsGroup);
-    // this.physics.add.collider(buildingsGroup, ground);
+    this.physics.add.collider(buildingsGroup, ground);
 
     // Enable physics for ground
     this.physics.world.enable(ground);
 
-    // Load the first sprite on the left with physics
     jesseSprite = this.physics.add.sprite(
       300,
       game.config.height - 120,
       "jesse"
     );
 
-    jesseSprite.setScale(0.85);
+    jesseSprite.setScale(0.75);
 
     jesseSprite.setCollideWorldBounds(true);
     jesseSprite.setBounce(0.2);
     this.physics.add.collider(jesseSprite, invisibleGround);
 
-    // Create animations for alternating between the third and last sprites
+    // Animations for alternating between the third and last sprites
     this.anims.create({
       key: "alternate",
       frames: [
@@ -125,12 +130,17 @@ export default class GameScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    // Play the 'alternate' animation
     jesseSprite.play("alternate");
+
+    survivorsGroup = this.physics.add.group();
 
     cursors = this.input.keyboard.createCursorKeys();
     jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     jumpKeyJustPressed = false;
+
+    // this.physics.add.collider(jesseSprite, survivor);
+
+    // this.physics.add.overlap(player, stars, collectStar, null, this);
 
     // Generate initial building
     generateBuilding(
@@ -139,9 +149,16 @@ export default class GameScene extends Phaser.Scene {
       game.config.width / 2,
       game.config.height - 140
     );
-    jesseSprite.setDepth(2);
+
+    scoreText = this.add.text(30, 50, "score: 0", {
+      fontSize: "32px",
+      fill: "#000",
+    });
+
+    jesseSprite.setDepth(6);
     ground.setDepth(1);
     buildingsGroup.setDepth(0);
+    scoreText.setDepth(10);
 
     jumpCount = 0;
   }
@@ -159,6 +176,10 @@ export default class GameScene extends Phaser.Scene {
 
       building.windows.forEach((window) => {
         window.x -= groundSpeed * ground.scaleX;
+      });
+
+      building.survivors.forEach((survivor) => {
+        survivor.x -= groundSpeed * ground.scaleX;
       });
 
       // Despawn buildings that are off-screen
@@ -209,6 +230,16 @@ export default class GameScene extends Phaser.Scene {
         : game.config.width + 300;
       generateBuilding(this, newBuildingType, newX, game.config.height - 70);
     }
+
+    this.physics.overlap(
+      jesseSprite,
+      survivorsGroup,
+      (scene, survivor) => deliverSurvivor(this, survivor),
+      null,
+      this,
+      null,
+      this
+    );
   }
 }
 
@@ -227,8 +258,10 @@ function despawnBuilding(building) {
   building.setActive(false).setVisible(false);
 }
 
-const minDistance = 20; // Minimum distance between buildings
-const maxDistance = 200; // Maximum distance between buildings
+// Min and maxx distance between buildings
+
+const minDistance = 20;
+const maxDistance = 200;
 
 function generateBuilding(scene, buildingType, x, y) {
   // Randomize the distance between buildings
@@ -242,6 +275,7 @@ function generateBuilding(scene, buildingType, x, y) {
   building.setScale(1.1);
 
   building.windows = [];
+  building.survivors = [];
 
   // Adjust the position of the sprite to spawn on the ground
   const groundLevel = game.config.height - 70;
@@ -267,22 +301,26 @@ function generateBuilding(scene, buildingType, x, y) {
       building.y - position.y,
       position.width,
       position.height,
-      0x0A0B10 
+      0x0a0b10
     );
 
     window.setDepth(building.depth + 1);
 
     building.windows.push(window);
+
+    if (building.survivors.length === 0 && Phaser.Math.Between(0, 6) === 1) {
+      const randomWindow = Phaser.Math.RND.pick(building.windows);
+      addSurvivor(scene, randomWindow.x, randomWindow.y, building.survivors);
+    }
   });
 
-  buildingsGroup.add(building);
   scene.physics.add.collider(building, ground);
 }
 
 function getRandomBuildingType() {
   const buildingTypes = [
     "building_1",
-     "building_2",
+    "building_2",
     "building_3",
     "building_4",
     "building_5",
@@ -302,7 +340,6 @@ function getWindowPositions(buildingType) {
       { x: 75, y: 210, width: 105, height: 75 },
       { x: -75, y: 210, width: 105, height: 75 },
       { x: -75, y: 80, width: 107, height: 75 },
-
     ],
     building_3: [
       { x: -110, y: 470, width: 72, height: 75 },
@@ -317,24 +354,21 @@ function getWindowPositions(buildingType) {
       { x: 120, y: 210, width: 70, height: 80 },
 
       { x: -105, y: 80, width: 80, height: 80 },
-
     ],
     building_4: [
       { x: -70, y: 470, width: 103, height: 75 },
       { x: 78, y: 465, width: 93, height: 80 },
-      
+
       { x: -70, y: 320, width: 103, height: 75 },
       { x: 78, y: 320, width: 93, height: 80 },
 
       { x: -70, y: 180, width: 103, height: 75 },
       { x: 78, y: 180, width: 93, height: 80 },
-
-
-    ], 
+    ],
     building_5: [
       { x: -107, y: 498, width: 80, height: 75 },
       { x: 100, y: 498, width: 80, height: 75 },
-      
+
       { x: -107, y: 355, width: 80, height: 75 },
       { x: 100, y: 355, width: 80, height: 75 },
 
@@ -343,9 +377,78 @@ function getWindowPositions(buildingType) {
 
       { x: -107, y: 90, width: 80, height: 75 },
       { x: 100, y: 90, width: 80, height: 75 },
-
-
-    ], };
+    ],
+  };
 
   return windowPositionsMap[buildingType] || [];
+}
+
+function addSurvivor(scene, x, y, building_survivors) {
+  const survivor = scene.physics.add
+    .sprite(x, y, "survivor")
+    .setOrigin(0.5, 0.6);
+  survivor.setScale(0.3);
+  survivor.setDepth(5); // Set a depth higher than the buildings
+  survivor.body.allowGravity = false;
+
+  scene.physics.world.enable(survivor, Phaser.Physics.Arcade.STATIC_BODY);
+
+  // Animations for alternating between the third and last sprites
+  scene.anims.create({
+    key: "alternate_survivor",
+    frames: [
+      { key: "survivor", frame: 0 },
+      { key: "survivor", frame: 1 },
+    ],
+    frameRate: 2,
+    repeat: -1,
+  });
+
+  survivor.play("alternate_survivor");
+
+  // Add the survivor to the scene
+  scene.physics.add.existing(survivor);
+  survivorsGroup.add(survivor);
+  survivorsGroup.children.iterate((survivor) => {
+    survivor.body.allowGravity = false;
+  });
+
+  building_survivors.push(survivor);
+}
+
+function deliverSurvivor(scene, survivor) {
+  if (!scene || typeof scene.tweens !== "object") {
+    console.error("Invalid scene or missing tweens object.");
+    return;
+  }
+
+  if (survivor.isDisappearing) {
+    return;
+  }
+
+  // Set the flag to indicate that the survivor is disappearing
+  survivor.isDisappearing = true;
+
+  // Remove the survivor from the group
+  scene.anims.create({
+    key: "disappearing_survivor",
+    frames: [{ key: "survivor", frame: 2 }],
+  });
+
+  survivor.play("disappearing_survivor");
+
+  score += 10;
+  scoreText.setText("Score: " + score);
+  // Add fading animation (tween) for disappearance
+  scene.tweens.add({
+    targets: survivor,
+    alpha: 0, // Target alpha (0 = fully transparent)
+    duration: 1000, // Duration of the fade (in milliseconds)
+    ease: "Linear", // Easing function
+    delay: 400, // 2-second delay before starting the tween
+    onComplete: () => {
+      // Callback function when the tween completes (optional)
+      survivorsGroup.remove(survivor, true, true);
+    },
+  });
 }

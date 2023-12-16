@@ -18,10 +18,3 @@ const config = {
 
 window.game = new Phaser.Game(config);
 
-const foregroundSpeed = 1.5;
-const midgroundSpeed = 0.8;
-const backgroundSpeed = 0.2;
-const groundSpeed = 1.6; 
-
-let canDoubleJump = true;
-let buildingsGroup; // Physics group for buildings
