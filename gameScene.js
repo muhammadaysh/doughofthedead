@@ -1,15 +1,22 @@
-// Declare necessary variables
+import GameOverScene from "./gameOverScene.js";
+
 let sky;
 let background;
 let midground;
 let foreground;
 let ground;
+
 let invisibleGround;
 let buildingsGroup;
 let survivorsGroup;
+let zombiesGroundGroup;
+let zombiesFlyGroup;
+
 let jesseSprite;
+
 let cursors;
 let jumpKey;
+let forceFallKey;
 let score = 0;
 let scoreText;
 
@@ -19,13 +26,34 @@ let jumpKeyJustPressed = false;
 let wobbleFrequency = 0.01;
 let wobbleAmplitude = 7;
 
+let survivorSpawnProbability = 0.8;
+let zombieGroundSpawnProbability = 0.01;
+
+const baseZombieSpawnCooldown = 3000;
+let lastZombieSpawnTime = 0;
+let zombieSpawnCooldown = baseZombieSpawnCooldown;
+
+let lastFlyingZombieSpawnTime = 0;
+const baseFlyingZombieSpawnCooldown = 5000;
+let flyingZombieSpawnCooldown = baseFlyingZombieSpawnCooldown;
+
+
 // Constants
 const foregroundSpeed = 1.8;
 const midgroundSpeed = 1.2;
 const backgroundSpeed = 0.6;
-const groundSpeed = 2.0;
+const groundSpeed = 2.2;
 
 export default class GameScene extends Phaser.Scene {
+  constructor() {
+    super("GameScene");
+  }
+
+  resetScore() {
+    score = 0;
+    scoreText.setText("Score: " + score);
+  }
+
   preload() {
     this.load.image("sky", "assets/sky.png");
     this.load.image("foreground", "assets/foreground.png");
@@ -40,6 +68,14 @@ export default class GameScene extends Phaser.Scene {
       frameWidth: 1200 / 3,
       frameHeight: 274,
     });
+    this.load.spritesheet("zombie_ground", "assets/zombie_sprite.png", {
+      frameWidth: 288 / 9,
+      frameHeight: 256 / 4,
+    });
+    this.load.spritesheet("zombie_fly", "assets/zombiefly_sprite.png", {
+      frameWidth: 224 / 7,
+      frameHeight: 128 / 4,
+    });
 
     this.load.image("building_1", "assets/building_1.png");
     this.load.image("building_2", "assets/building_2.png");
@@ -49,6 +85,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    var score = 0;
+
     // Set the sky background
     sky = this.add.image(0, 0, "sky").setOrigin(0, 0);
     // Scale sky to fit the window
@@ -89,12 +127,16 @@ export default class GameScene extends Phaser.Scene {
       .setScale(game.config.width / sky.width, game.config.height / sky.height);
     this.physics.world.enable(ground, Phaser.Physics.Arcade.STATIC_BODY);
 
-    // Set up the invisible ground
-    invisibleGround = this.physics.add
-      .sprite(0, game.config.height - 35, "ground")
-      .setOrigin(0, 0);
+    invisibleGround = this.add
+      .tileSprite(0, game.config.height - 30, game.config.width, 70, "ground")
+      .setOrigin(0, 0)
+      .setScale(game.config.width / sky.width, game.config.height / sky.height);
+    this.physics.world.enable(
+      invisibleGround,
+      Phaser.Physics.Arcade.STATIC_BODY
+    );
+
     invisibleGround.setAlpha(0);
-    this.physics.world.enable(invisibleGround);
 
     // Sync the initial positions
     invisibleGround.x = ground.x;
@@ -115,9 +157,16 @@ export default class GameScene extends Phaser.Scene {
 
     jesseSprite.setScale(0.75);
 
+    jesseSprite.body.setSize(
+      jesseSprite.width * 0.8,
+      jesseSprite.height * 0.5,
+      true
+    );
+
     jesseSprite.setCollideWorldBounds(true);
-    jesseSprite.setBounce(0.2);
+    this.physics.world.enable(jesseSprite);
     this.physics.add.collider(jesseSprite, invisibleGround);
+    jesseSprite.setBounce(0.2);
 
     // Animations for alternating between the third and last sprites
     this.anims.create({
@@ -132,17 +181,20 @@ export default class GameScene extends Phaser.Scene {
 
     jesseSprite.play("alternate");
 
+    zombiesGroundGroup = this.physics.add.group();
+    this.physics.world.enable(zombiesGroundGroup);
+    this.physics.add.collider(zombiesGroundGroup, invisibleGround);
+
+    zombiesFlyGroup = this.physics.add.group();
+    this.physics.world.enable(zombiesFlyGroup);
+
     survivorsGroup = this.physics.add.group();
 
     cursors = this.input.keyboard.createCursorKeys();
-    jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    jumpKeyJustPressed = false;
+    jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
 
-    // this.physics.add.collider(jesseSprite, survivor);
+    forceFallKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
 
-    // this.physics.add.overlap(player, stars, collectStar, null, this);
-
-    // Generate initial building
     generateBuilding(
       this,
       getRandomBuildingType(),
@@ -152,11 +204,15 @@ export default class GameScene extends Phaser.Scene {
 
     scoreText = this.add.text(30, 50, "score: 0", {
       fontSize: "32px",
-      fill: "#000",
+      fill: "#255",
     });
+
+    scoreText.tint = 0x000000;
 
     jesseSprite.setDepth(6);
     ground.setDepth(1);
+    invisibleGround.setDepth(2);
+
     buildingsGroup.setDepth(0);
     scoreText.setDepth(10);
 
@@ -164,22 +220,26 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
-    // The tilePositionX property can be directly set on tile sprites
-    foreground.tilePositionX += foregroundSpeed;
-    midground.tilePositionX += midgroundSpeed;
-    background.tilePositionX += backgroundSpeed;
-    ground.tilePositionX += groundSpeed;
+    const speedMultiplier = Math.min(1 + score * 0.001, 3.5);
+
+    // Move the foreground, midground, background, and ground
+    foreground.tilePositionX += foregroundSpeed * speedMultiplier;
+    midground.tilePositionX += midgroundSpeed * speedMultiplier;
+    background.tilePositionX += backgroundSpeed * speedMultiplier;
+    ground.tilePositionX += groundSpeed * speedMultiplier;
 
     // Move the buildings at the same pace as the ground
     buildingsGroup.getChildren().forEach((building) => {
-      building.x -= groundSpeed * ground.scaleX;
+      const buildingSpeed = groundSpeed * speedMultiplier * ground.scaleX;
+
+      building.x -= buildingSpeed;
 
       building.windows.forEach((window) => {
-        window.x -= groundSpeed * ground.scaleX;
+        window.x -= buildingSpeed;
       });
 
       building.survivors.forEach((survivor) => {
-        survivor.x -= groundSpeed * ground.scaleX;
+        survivor.x -= buildingSpeed;
       });
 
       // Despawn buildings that are off-screen
@@ -188,14 +248,23 @@ export default class GameScene extends Phaser.Scene {
       }
     });
 
-    // Sync the positions and velocities of the visible and invisible grounds
-    invisibleGround.x = ground.x;
-    invisibleGround.setVelocityX(-groundSpeed * 100);
+    if (forceFallKey.isDown) {
+      this.physics.world.gravity.y = 4500;
+    } else {
+      // Reset gravity when S key is released
+      this.physics.world.gravity.y = 1200;
+    }
 
     if (jumpKey.isDown && !jumpKeyJustPressed) {
-      if (jumpCount < 2) {
+      if (jumpCount < 1) {
         // Jump only if Jesse is on the ground
-        jesseSprite.setVelocityY(-650);
+        jesseSprite.setVelocityY(-725);
+        jumpCount++; // Increment jump count
+        jumpKeyJustPressed = true; // Set the flag to true
+        console.log(jumpCount);
+      } else if (jumpCount > 0 && jumpCount < 2) {
+        // Jump only if Jesse is on the ground
+        jesseSprite.setVelocityY(-925);
         jumpCount++; // Increment jump count
         jumpKeyJustPressed = true; // Set the flag to true
         console.log(jumpCount);
@@ -223,12 +292,26 @@ export default class GameScene extends Phaser.Scene {
 
     // Check if a new building needs to be generated
     if (shouldGenerateNewBuilding()) {
+      survivorSpawnProbability = Math.max(
+        0.2,
+        survivorSpawnProbability - 0.0001 * score
+      );
+
+      // Generate a random number to determine whether to spawn a survivor
+      const shouldSpawnSurvivor = Math.random() < survivorSpawnProbability;
+
       const newBuildingType = getRandomBuildingType();
       const lastBuilding = getLastBuilding();
       const newX = lastBuilding
         ? lastBuilding.x + lastBuilding.width
         : game.config.width + 300;
-      generateBuilding(this, newBuildingType, newX, game.config.height - 70);
+      generateBuilding(
+        this,
+        newBuildingType,
+        newX,
+        game.config.height - 70,
+        shouldSpawnSurvivor
+      );
     }
 
     this.physics.overlap(
@@ -237,6 +320,55 @@ export default class GameScene extends Phaser.Scene {
       (scene, survivor) => deliverSurvivor(this, survivor),
       null,
       this,
+      null,
+      this
+    );
+
+    if (
+      Math.random() < zombieGroundSpawnProbability &&
+      this.time.now - lastZombieSpawnTime > zombieSpawnCooldown
+    ) {
+      spawnGroundZombie(this);
+
+
+      // Update the last spawn time
+      lastZombieSpawnTime = this.time.now;
+      // Reset the zombie spawn cooldown
+      zombieSpawnCooldown = baseZombieSpawnCooldown - 100 * score;
+      zombieSpawnCooldown = Phaser.Math.Clamp(
+        zombieSpawnCooldown,
+        500,
+        baseZombieSpawnCooldown
+      );
+    }
+
+    if (score >= 80) {
+      // Spawn flying zombies with a cooldown
+      if (this.time.now - lastFlyingZombieSpawnTime > flyingZombieSpawnCooldown) {
+          spawnFlyingZombie(this);
+          lastFlyingZombieSpawnTime = this.time.now;
+          flyingZombieSpawnCooldown = baseFlyingZombieSpawnCooldown;
+      }
+  }
+
+    this.physics.overlap(
+      jesseSprite,
+      zombiesGroundGroup,
+      () => {
+        // Trigger the game over scene
+        this.scene.start("GameOverScene", { score: score });
+      },
+      null,
+      this
+    );
+
+    this.physics.overlap(
+      jesseSprite,
+      zombiesFlyGroup,
+      () => {
+        // Trigger the game over scene
+        this.scene.start("GameOverScene", { score: score });
+      },
       null,
       this
     );
@@ -263,7 +395,7 @@ function despawnBuilding(building) {
 const minDistance = 20;
 const maxDistance = 200;
 
-function generateBuilding(scene, buildingType, x, y) {
+function generateBuilding(scene, buildingType, x, y, shouldSpawnSurvivor) {
   // Randomize the distance between buildings
   const distance = Phaser.Math.Between(minDistance, maxDistance);
 
@@ -308,7 +440,7 @@ function generateBuilding(scene, buildingType, x, y) {
 
     building.windows.push(window);
 
-    if (building.survivors.length === 0 && Phaser.Math.Between(0, 6) === 1) {
+    if (shouldSpawnSurvivor && building.survivors.length === 0) {
       const randomWindow = Phaser.Math.RND.pick(building.windows);
       addSurvivor(scene, randomWindow.x, randomWindow.y, building.survivors);
     }
@@ -388,8 +520,11 @@ function addSurvivor(scene, x, y, building_survivors) {
     .sprite(x, y, "survivor")
     .setOrigin(0.5, 0.6);
   survivor.setScale(0.3);
-  survivor.setDepth(5); // Set a depth higher than the buildings
+  survivor.setDepth(5);
   survivor.body.allowGravity = false;
+
+  // Reduce hitbox size
+  survivor.body.setSize(survivor.width * 0.55, survivor.height * 0.7, true);
 
   scene.physics.world.enable(survivor, Phaser.Physics.Arcade.STATIC_BODY);
 
@@ -451,4 +586,85 @@ function deliverSurvivor(scene, survivor) {
       survivorsGroup.remove(survivor, true, true);
     },
   });
+}
+
+function spawnGroundZombie(scene) {
+  const spawnY = Phaser.Math.Between(
+    game.config.height - 30,
+    game.config.height - 50
+  );
+
+  const zombieGround = zombiesGroundGroup.create(
+    game.config.width + 50,
+    spawnY,
+    "zombie_ground"
+  );
+
+  zombieGround.body.setSize(
+    zombieGround.width * 0.55,
+    zombieGround.height * 0.7,
+    true
+  );
+
+  scene.anims.create({
+    key: "zombie_running",
+    frames: [
+      { key: "zombie_ground", frame: 11 },
+      { key: "zombie_ground", frame: 10 },
+      { key: "zombie_ground", frame: 9 },
+    ],
+    frameRate: 6,
+    repeat: -1,
+  });
+
+  zombieGround.play("zombie_running");
+
+  zombieGround.setOrigin(0.5, 1);
+  zombieGround.setScale(2.2);
+  zombieGround.setVelocityX(-500);
+  zombieGround.setDepth(jesseSprite.depth);
+
+  console.log("zombie spawned!");
+}
+
+function spawnFlyingZombie(scene) {
+  const spawnY = Phaser.Math.Between(
+    game.config.height - 200,
+    game.config.height - 600
+  );
+
+  const zombieFly = zombiesFlyGroup.create(
+    game.config.width + 50,
+    spawnY,
+    "zombie_fly"
+  );
+
+  zombieFly.body.setSize(
+    zombieFly.width * 0.55,
+    zombieFly.height * 0.7,
+    true
+  );
+
+  zombieFly.body.allowGravity = false;
+
+  scene.anims.create({
+    key: "zombie_flying",
+    frames: [
+      { key: "zombie_fly", frame: 7 },
+      { key: "zombie_fly", frame: 8 },
+      { key: "zombie_fly", frame: 9 },
+    ],
+    frameRate: 6,
+    repeat: -1,
+  });
+
+  zombieFly.play("zombie_flying"); // Use "zombie_flying" animation key
+
+  zombieFly.setOrigin(0.5, 1);
+  zombieFly.setScale(3.0);
+  zombieFly.setVelocityX(-500);
+  zombieFly.setFlipX(true);
+  zombieFly.setDepth(jesseSprite.depth);
+
+  console.log("Flying zombie spawned!");
 }

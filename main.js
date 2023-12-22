@@ -1,4 +1,6 @@
 import GameScene from './gameScene.js';
+import GameOverScene from './gameOverScene.js';
+
 
 const config = {
     type: Phaser.AUTO,
@@ -9,11 +11,11 @@ const config = {
         default: "arcade",
         arcade: {
             gravity: {
-                y: 800 // Adjust gravity as needed
+                y: 1200 // Adjust gravity as needed
             }
         }
     },
-    scene: [GameScene],
+    scene: [GameScene, GameOverScene],
 };
 
 window.game = new Phaser.Game(config);
