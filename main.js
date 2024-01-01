@@ -1,5 +1,7 @@
-import GameScene from './gameScene.js';
-import GameOverScene from './gameOverScene.js';
+import GameScene from './scenes/gameScene.js';
+import GameOverScene from './scenes/gameOverScene.js';
+import MainMenuScene from './scenes/mainMenuScene.js';
+
 
 
 const config = {
@@ -15,7 +17,7 @@ const config = {
             }
         }
     },
-    scene: [GameScene, GameOverScene],
+    scene: [MainMenuScene, GameScene, GameOverScene],
 };
 
 window.game = new Phaser.Game(config);
