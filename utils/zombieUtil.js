@@ -18,6 +18,10 @@ import {
 const baseZombieSpawnCooldown = 3000;
 let lastZombieSpawnTime = 0;
 let zombieSpawnCooldown = baseZombieSpawnCooldown;
+const groundZombieScale = Phaser.Math.Between(2.1 * 100, 2.6 * 100) / 100;
+const flyZombieScale = Phaser.Math.Between(3 * 100, 3.5 * 100) / 100;
+
+
 
 export function createGroups(scene, invisibleGround) {
   let zombiesGroundGroup = scene.physics.add.group();
@@ -63,8 +67,7 @@ export function spawnGroundZombie(scene) {
   zombieGround.play("zombie_running");
 
   zombieGround.setOrigin(0.5, 1);
-  zombieGround.setScale(2.2);
-  zombieGround.setVelocityX(-500);
+  zombieGround.setScale(groundZombieScale);
   zombieGround.setDepth(jesseSprite.depth);
 
   console.log("zombie spawned!");
@@ -100,8 +103,7 @@ export function spawnFlyingZombie(scene) {
   zombieFly.play("zombie_flying"); // Use "zombie_flying" animation key
 
   zombieFly.setOrigin(0.5, 1);
-  zombieFly.setScale(3.0);
-  zombieFly.setVelocityX(-500);
+  zombieFly.setScale(flyZombieScale);
   zombieFly.setFlipX(true);
   zombieFly.setDepth(jesseSprite.depth);
 

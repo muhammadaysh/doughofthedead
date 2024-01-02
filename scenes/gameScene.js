@@ -32,6 +32,7 @@ let jesseSprite;
 let cursors;
 let jumpKey;
 let forceFallKey;
+let pauseKey;
 
 // Game variables
 let score = 0;
@@ -40,6 +41,9 @@ let scoreText;
 // Jumping variables
 let jumpCount = 0;
 let jumpKeyJustPressed = false;
+
+// Pausing variables
+let isPaused = false;
 
 // Wobbling variables
 const wobbleFrequency = 0.01;
@@ -101,6 +105,27 @@ export default class GameScene extends Phaser.Scene {
   // Reset the player's score and update the score display
   resetScore() {
     score = 0;
+  }
+
+  togglePause() {
+    if (this.physics.world.isPaused) {
+      // If the game is already paused, resume it
+      this.physics.world.resume();
+      // Hide your pause menu or any other UI elements
+      // ...
+    } else {
+      // If the game is not paused, pause it
+      this.physics.world.pause();
+      // Show your pause menu or any other UI elements
+      // const frame = this.add.sprite(
+      //   this.game.config.width / 2,
+      //   this.game.config.height / 2,
+      //   'ui_frames'
+      // );
+      // frame.setScale(11);
+      // frame.setFrame(1); // Change to the appropriate frame number
+      // frame.setDepth(4);
+    }
   }
 
   preload() {
@@ -265,6 +290,7 @@ export default class GameScene extends Phaser.Scene {
     cursors = this.input.keyboard.createCursorKeys();
     jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     forceFallKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
     // Generate initial building
     buildingUtil.generateBuilding(
@@ -296,7 +322,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
-    const speedMultiplier = Math.min(1 + score * 0.001, 3.5);
+    const speedMultiplier = Math.min(1 + score * 0.005, 3.5);
 
     // Move the foreground, midground, background, and ground
     foreground.tilePositionX += foregroundSpeed * speedMultiplier;
@@ -323,6 +349,25 @@ export default class GameScene extends Phaser.Scene {
         buildingUtil.despawnBuilding(building);
       }
     });
+
+    zombiesGroundGroup.getChildren().forEach((zombie) => {
+      const zombieSpeed = groundSpeed * speedMultiplier * ground.scaleX;
+
+      zombie.x -= zombieSpeed * 1.3;
+    });
+
+    // Move the zombiesFlyGroup at the same pace as the ground
+    zombiesFlyGroup.getChildren().forEach((zombie) => {
+      const zombieSpeed = groundSpeed * speedMultiplier * ground.scaleX;
+
+      zombie.x -= zombieSpeed * 1.4;
+    });
+
+    // Handle pausing
+
+    // if (pauseKey.isDown) {
+    //   this.scene.pause();
+    // }
 
     // Adjust gravity based on forceFallKey input
     if (forceFallKey.isDown) {

@@ -203,14 +203,14 @@ export default class MainMenuScene extends Phaser.Scene {
         this.game.config.height / 2,
         "ui_frames"
       );
-      frame.setScale(10);
+      frame.setScale(11);
       frame.setFrame(1); // Change to the appropriate frame number
       frame.setDepth(4);
 
       // Add text to the frame
       const frameText = this.add.bitmapText(
         frame.x,
-        frame.y - 90,
+        frame.y - 80,
         "pressStart2P",
         "Controls",
 
@@ -224,7 +224,7 @@ export default class MainMenuScene extends Phaser.Scene {
         frame.x,
         frameText.y + 60, // Adjust the y-position based on the size of the existing text
         "pressStart2P",
-        "W - Jump\n\nS - Force Fall",
+        "W - Jump\n\nW,W - Double Jump\n\nS - Force Fall",
         16
       );
       keyText.setTint(0xffffff);
@@ -232,8 +232,8 @@ export default class MainMenuScene extends Phaser.Scene {
       keyText.setDepth(5);
 
       const closeButton = this.add.sprite(
-        frame.x - 170,
-        frame.y - 170,
+        frame.x - 135,
+        frame.y - 130,
         "ui_small_buttons"
       );
 
