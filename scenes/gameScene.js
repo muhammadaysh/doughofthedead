@@ -107,32 +107,11 @@ export default class GameScene extends Phaser.Scene {
     score = 0;
   }
 
-  togglePause() {
-    if (this.physics.world.isPaused) {
-      // If the game is already paused, resume it
-      this.physics.world.resume();
-      // Hide your pause menu or any other UI elements
-      // ...
-    } else {
-      // If the game is not paused, pause it
-      this.physics.world.pause();
-      // Show your pause menu or any other UI elements
-      // const frame = this.add.sprite(
-      //   this.game.config.width / 2,
-      //   this.game.config.height / 2,
-      //   'ui_frames'
-      // );
-      // frame.setScale(11);
-      // frame.setFrame(1); // Change to the appropriate frame number
-      // frame.setDepth(4);
-    }
-  }
-
   preload() {
     // Load audio
     this.load.audio(
       "game_music",
-      "music/Cowboy Bebop OST 1 - Bad Dog No Biscuits.mp3"
+      "music/letsmakethisquick (main music).mp3"
     );
     this.load.audio("deliver_sound", "music/deliver_sound.mp3");
     this.load.audio("jump_1", "music/jump_1.mp3");
@@ -330,48 +309,54 @@ export default class GameScene extends Phaser.Scene {
     background.tilePositionX += backgroundSpeed * speedMultiplier;
     ground.tilePositionX += groundSpeed * speedMultiplier;
 
-    // Move the buildings at the same pace as the ground
-    buildingsGroup.getChildren().forEach((building) => {
-      const buildingSpeed = groundSpeed * speedMultiplier * ground.scaleX;
-
-      building.x -= buildingSpeed;
-
-      building.windows.forEach((window) => {
-        window.x -= buildingSpeed;
+    if (buildingsGroup && buildingsGroup.getChildren) {
+      console.log(buildingsGroup.getChildren);
+      buildingsGroup.getChildren().forEach((building) => {
+          if (!building) {
+              console.error("Building is undefined or null.");
+              return;
+          }
+  
+          const buildingSpeed = groundSpeed * speedMultiplier * ground.scaleX;
+  
+          building.x -= buildingSpeed;
+  
+          building.windows.forEach((window) => {
+              window.x -= buildingSpeed;
+          });
+  
+          building.survivors.forEach((survivor) => {
+              survivor.x -= buildingSpeed;
+          });
+  
+          // Despawn buildings that are off-screen
+          if (building.x + building.width < 0 - offScreenMargin) {
+              console.log("Despawning building:", building);
+              buildingUtil.despawnBuilding(building);
+          }
       });
-
-      building.survivors.forEach((survivor) => {
-        survivor.x -= buildingSpeed;
-      });
-
-      // Despawn buildings that are off-screen
-      if (building.x + building.width < 0 - offScreenMargin) {
-        buildingUtil.despawnBuilding(building);
-      }
-    });
-
+  } else {
+      console.error("buildingsGroup is undefined or does not have getChildren method.");
+  }
+  
+    // Set speed for zombies to match environment speed
     zombiesGroundGroup.getChildren().forEach((zombie) => {
       const zombieSpeed = groundSpeed * speedMultiplier * ground.scaleX;
 
       zombie.x -= zombieSpeed * 1.3;
     });
 
-    // Move the zombiesFlyGroup at the same pace as the ground
+    // Set speed for zombies to match environment speed
     zombiesFlyGroup.getChildren().forEach((zombie) => {
       const zombieSpeed = groundSpeed * speedMultiplier * ground.scaleX;
 
       zombie.x -= zombieSpeed * 1.4;
     });
-
-    // Handle pausing
-
-    // if (pauseKey.isDown) {
-    //   this.scene.pause();
-    // }
+   
 
     // Adjust gravity based on forceFallKey input
     if (forceFallKey.isDown) {
-      this.physics.world.gravity.y = 4500;
+      this.physics.world.gravity.y = 6000;
     } else {
       // Reset gravity when S key is released
       this.physics.world.gravity.y = 1200;
@@ -514,5 +499,12 @@ export default class GameScene extends Phaser.Scene {
       null,
       this
     );
+
+    if (pauseKey.isDown) {
+      var screenshot = this.game.renderer.snapshot();
+      this.scene.pause();
+      this.scene.start("PauseScene", { screenshot: screenshot });
+    }
   }
+  
 }

@@ -20,7 +20,7 @@ export default class GameOverScene extends Phaser.Scene {
   preload(){
     this.load.audio(
       "game_over_music",
-      "music/game_over (cosmos).mp3"
+      "music/game_over (1).mp3"
     );
 
     this.load.bitmapFont(
@@ -28,16 +28,29 @@ export default class GameOverScene extends Phaser.Scene {
       pressStart2PConfig.texture,
       pressStart2PConfig.fontData
     );
+
+    this.load.image(
+      "blood_splatter",
+      "ui/blood_splatter.png"
+    )
   }
 
 
   create() {
     console.log("Game Over");
 
-    game_over_music = this.sound.add("game_over_music", { volume: 0.6, loop: true });
+    game_over_music = this.sound.add("game_over_music", { volume: 0.6, loop: false });
 
 
     game_over_music.play();
+
+    const bloodSplatter = this.add.image(
+      this.game.config.width / 2 + 300,
+      this.game.config.height / 2 + 160,
+      "blood_splatter"
+    );
+
+    bloodSplatter.setScale(0.6);
 
 
     // Display "Game Over" message
@@ -73,12 +86,13 @@ export default class GameOverScene extends Phaser.Scene {
 
     restartButton.setScale(5.4);
 
-    const frameNormal = 0; // Frame 3
-    const frameHover = 1; // Frame 4
+    const frameNormal = 0; 
+    const frameHover = 1; 
 
     restartButton.setFrame(frameNormal);
     restartButton.setInteractive();
 
+    // Handle hovering over button
     restartButton.on("pointerover", () => {
       hover_sound.play();
       restartButton.setFrame(frameHover);
@@ -86,12 +100,14 @@ export default class GameOverScene extends Phaser.Scene {
 
     });
 
+    // Handle hovering off button
     restartButton.on("pointerout", () => {
       restartButton.setFrame(frameNormal);
       restartText.y = restartText.y - 10;
 
     });
-
+    
+    // Handle clicking button
     restartButton.on("pointerup", () => {
       click_sound.play();
       game_over_music.stop();
@@ -123,6 +139,7 @@ export default class GameOverScene extends Phaser.Scene {
     mainMenuButton.setFrame(frameNormal);
     mainMenuButton.setInteractive();
 
+    // Handle hovering over button
     mainMenuButton.on("pointerover", () => {
       hover_sound.play();
       mainMenuButton.setFrame(frameHover);
@@ -130,12 +147,16 @@ export default class GameOverScene extends Phaser.Scene {
 
     });
 
+
+    // Handle hovering off button
     mainMenuButton.on("pointerout", () => {
       mainMenuButton.setFrame(frameNormal);
       mainMenuText.y = mainMenuText.y - 10;
 
     });
 
+
+    // Handle clicking button
     mainMenuButton.on("pointerup", () => {
       click_sound.play();
       game_over_music.stop();

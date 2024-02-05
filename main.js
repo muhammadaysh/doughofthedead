@@ -1,6 +1,7 @@
 import GameScene from './scenes/gameScene.js';
 import GameOverScene from './scenes/gameOverScene.js';
 import MainMenuScene from './scenes/mainMenuScene.js';
+import PauseScene from './scenes/pauseScene.js';
 
 
 
@@ -17,7 +18,7 @@ const config = {
             }
         }
     },
-    scene: [MainMenuScene, GameScene, GameOverScene],
+    scene: [MainMenuScene, GameScene, GameOverScene, PauseScene],
 };
 
 window.game = new Phaser.Game(config);

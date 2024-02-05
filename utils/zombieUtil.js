@@ -8,7 +8,6 @@ import {
   jesseSprite,
   score,
   scoreText,
-  cursors,
   jumpKey,
   forceFallKey,
   deliver_sound,
@@ -42,14 +41,14 @@ export function createGroups(scene, invisibleGround) {
 
 export function spawnGroundZombie(scene) {
   const zombieGround = zombiesGroundGroup.create(
-    game.config.width + 50,
-    game.config.height - 30,
+    game.config.width + 80,
+    game.config.height - 10,
     "zombie_ground"
   );
 
   zombieGround.body.setSize(
-    zombieGround.width * 0.55,
-    zombieGround.height * 0.7,
+    zombieGround.width * 0.35,
+    zombieGround.height * 0.50,
     true
   );
 
@@ -85,7 +84,7 @@ export function spawnFlyingZombie(scene) {
     "zombie_fly"
   );
 
-  zombieFly.body.setSize(zombieFly.width * 0.55, zombieFly.height * 0.7, true);
+  zombieFly.body.setSize(zombieFly.width * 0.30, zombieFly.height * 0.5, true);
 
   zombieFly.body.allowGravity = false;
 

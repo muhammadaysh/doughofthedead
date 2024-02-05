@@ -9,11 +9,13 @@ let shop_bell_sound;
 export { hover_sound, click_sound };
 
 export default class MainMenuScene extends Phaser.Scene {
+
   constructor() {
     super("MainMenuScene");
   }
 
   preload() {
+    
     this.load.spritesheet(
       "ui_large_buttons",
       "ui/ui-large-buttons-horizontal.png",
@@ -33,6 +35,8 @@ export default class MainMenuScene extends Phaser.Scene {
       frameHeight: 256 / 16,
     });
 
+    this.load.image("flying_pizza", "ui/pizza.png");
+
     this.load.image("sky_menu", "assets/sky.png");
     this.load.image("background_menu", "assets/background.png");
 
@@ -42,7 +46,7 @@ export default class MainMenuScene extends Phaser.Scene {
       pressStart2PConfig.fontData
     );
 
-    this.load.audio("menu_music", "music/Cowboy Bebop OST 1 - Cat Blues.mp3");
+    this.load.audio("menu_music", "music/berrylife (menu music).mp3");
     this.load.audio("hover", "music/hover.mp3");
     this.load.audio("click", "music/click.mp3");
     this.load.audio("shop_bell", "music/shop_door_bell.mp3");
@@ -50,6 +54,8 @@ export default class MainMenuScene extends Phaser.Scene {
 
   create() {
     console.log("Main Menu");
+
+    // Load sounds
 
     menu_music = this.sound.add("menu_music", {
       loop: true,
@@ -69,9 +75,9 @@ export default class MainMenuScene extends Phaser.Scene {
     });
 
     menu_music.play();
-    // Add the menuBackground image
+
     sky_menu = this.add.image(0, 0, "sky_menu").setOrigin(0, 0);
-    // Scale sky to fit the window
+    
     sky_menu.setScale(
       game.config.width / sky_menu.width,
       game.config.height / sky_menu.height
@@ -91,7 +97,34 @@ export default class MainMenuScene extends Phaser.Scene {
         game.config.height / sky_menu.height
       );
 
-    // Create and display the "Dough of the Dead" title with the "Press Start 2P" font
+    const respawnFlyingPizza = () => {
+      flyingPizza.x = this.game.config.width + 100; // Initial x position off the right side
+      flyingPizza.angle = 0; // Reset angle
+      flyingPizzaTween.restart(); // Restart the tween
+    };
+
+    // Create a pizza sprite
+    const flyingPizza = this.add.sprite(
+      this.game.config.width + 100, // Initial x position off the right side
+      this.game.config.height / 2 - 250,
+      "flying_pizza"
+    );
+
+    // Set the pizza's scale
+    flyingPizza.setScale(0.5);
+
+    // Apply animation to make the pizza fly and spin in from the right
+    const flyingPizzaTween = this.tweens.add({
+      targets: flyingPizza,
+      x: -100, 
+      angle: 360, 
+      duration: 6000, 
+      ease: "Linear", 
+      onComplete: () => {
+        respawnFlyingPizza();
+      },
+    });
+
     const titleText = this.add.bitmapText(
       this.game.config.width / 2,
       this.game.config.height / 2 - 100,
@@ -102,7 +135,7 @@ export default class MainMenuScene extends Phaser.Scene {
     titleText.setTint(0xffffff);
     titleText.setOrigin(0.5);
 
-    // Create the "Play" text with the "Press Start 2P" font
+    // Create the "Play" button
     const playText = this.add.bitmapText(
       this.game.config.width / 2,
       this.game.config.height / 2,
@@ -122,8 +155,8 @@ export default class MainMenuScene extends Phaser.Scene {
 
     playButton.setScale(5.4);
 
-    const frameNormal = 0; // Frame 3
-    const frameHover = 1; // Frame 4
+    const frameNormal = 0; 
+    const frameHover = 1; 
 
     playButton.setFrame(frameNormal);
 
@@ -197,6 +230,7 @@ export default class MainMenuScene extends Phaser.Scene {
 
     controlsButton.on("pointerup", () => {
       click_sound.play({ seek: 0.3 });
+
       // Open up a frame with text
       const frame = this.add.sprite(
         this.game.config.width / 2,
@@ -204,7 +238,7 @@ export default class MainMenuScene extends Phaser.Scene {
         "ui_frames"
       );
       frame.setScale(11);
-      frame.setFrame(1); // Change to the appropriate frame number
+      frame.setFrame(1); 
       frame.setDepth(4);
 
       // Add text to the frame
@@ -222,7 +256,7 @@ export default class MainMenuScene extends Phaser.Scene {
 
       const keyText = this.add.bitmapText(
         frame.x,
-        frameText.y + 60, // Adjust the y-position based on the size of the existing text
+        frameText.y + 60, 
         "pressStart2P",
         "W - Jump\n\nW,W - Double Jump\n\nS - Force Fall",
         16
@@ -241,23 +275,27 @@ export default class MainMenuScene extends Phaser.Scene {
       closeButton.setOrigin(0.5);
       closeButton.setDepth(5);
 
-      const frameNormalClose = 128; // Frame 3
-      const frameHoverClose = 129; // Frame 4
+      const frameNormalClose = 128;
+      const frameHoverClose = 129; 
 
       closeButton.setFrame(frameNormalClose);
 
       closeButton.setInteractive();
 
+      // Close button changes when hovered over
       closeButton.on("pointerover", () => {
         closeButton.setFrame(frameHoverClose);
       });
 
+
+      // Close button changes when move away
       closeButton.on("pointerout", () => {
         closeButton.setFrame(frameNormalClose);
       });
 
+      // Handle closing of frame when clicked
       closeButton.on("pointerup", () => {
-        // Handle closing the frame when hovered
+        click_sound.play({ seek: 0.3 });
         frame.destroy();
         frameText.destroy();
         keyText.destroy();

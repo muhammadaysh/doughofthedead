@@ -7,7 +7,6 @@ import {
     zombiesFlyGroup,
     jesseSprite,
     scoreText,
-    cursors,
     jumpKey,
     forceFallKey,
     deliver_sound,
